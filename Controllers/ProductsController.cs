@@ -1,8 +1,11 @@
 ﻿using dotnet_hero.Data;
+using dotnet_hero.DTOs.Product;
 using dotnet_hero.Entities;
+using Mapster;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Data.SqlClient;
+using Microsoft.EntityFrameworkCore;
 using System.Data;
 using System.Net;
 using System.Reflection;
@@ -19,54 +22,55 @@ namespace dotnet_hero.Controllers
 
         public ProductsController(DatabaseContext databaseContext) => this.databaseContext = databaseContext;
         [HttpGet]
-        public ActionResult<IEnumerable<Product>> GetProducts()
+        public ActionResult<IEnumerable<ProductResponse>> GetProducts()
         {
-            return databaseContext.Products.OrderByDescending(p => p.ProductId).ToList();
+            return databaseContext.Products.Include(p => p.Category)
+                .OrderByDescending(p => p.ProductId).Select(ProductResponse.FromProduct)
+                .ToList();
         }
         [HttpGet("{id}")]
-        public ActionResult<Product> GetProductById(int id)
+        public ActionResult<ProductResponse> GetProductById(int id)
         {
-            var result = databaseContext.Products.Find(id);
+            var result = databaseContext.Products.Include(p => p.Category)
+                .SingleOrDefault(p => p.ProductId == id);
             if (result == null)
                 return NotFound();
-            return result;
+            return ProductResponse.FromProduct(result);
         }
         [HttpGet("search")]
-        public ActionResult<IEnumerable<Product>> SearchProducts([FromQuery] string name)
+        public ActionResult<IEnumerable<ProductResponse>> SearchProducts([FromQuery] string name = "")
         {
-            if (string.IsNullOrEmpty(name))
-                name = "";
-            var result = databaseContext.Products
+            var result = databaseContext.Products.Include(p => p.Category)
                 .Where(p => p.Name.ToLower().Contains(name.ToLower()))
+                .Select(ProductResponse.FromProduct)
                 .ToList();
             //if (result == null)
             //    return NotFound();
             return result;
         }
         [HttpPost]
-        public ActionResult<Product> AddProduct([FromForm] Product model)
+        public ActionResult<Product> AddProduct([FromForm] ProductRequest productRequest)
         {
-            databaseContext.Products.Add(model);
+            Product product = productRequest.Adapt<Product>();
+            
+            databaseContext.Products.Add(product);
             databaseContext.SaveChanges();
             return StatusCode((int)HttpStatusCode.Created);
         }
         [HttpPut("{id}")]
-        public ActionResult<Product> UpdateProduct(int id, [FromForm] Product model)
+        public ActionResult<Product> UpdateProduct(int id, [FromForm] ProductRequest productRequest)
         {
-            if (id != model.ProductId)
+            if (id != productRequest.ProductId)
             {
                 return BadRequest();
             }
-            Product result = databaseContext.Products.Find(id);
+            Product result =  databaseContext.Products.Find(id);
 
             if (result == null)
             {
                 return NotFound();
             }
-            result.Name = model.Name;
-            result.Price = model.Price;
-            result.Stock = model.Stock;
-            result.CategoryId = model.CategoryId; 
+            productRequest.Adapt(result);
 
             databaseContext.Products.Update(result);
             databaseContext.SaveChanges();
