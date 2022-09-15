@@ -1,6 +1,7 @@
 ﻿using dotnet_hero.Data;
 using dotnet_hero.DTOs.Product;
 using dotnet_hero.Entities;
+using dotnet_hero.Interfaces;
 using Mapster;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -18,76 +19,64 @@ namespace dotnet_hero.Controllers
     [ApiController]
     public class ProductsController : ControllerBase
     {
-        private readonly DatabaseContext databaseContext;
+        private readonly IProductService productService;
 
-        public ProductsController(DatabaseContext databaseContext) => this.databaseContext = databaseContext;
+        public ProductsController(IProductService productService) => this.productService = productService;
+
         [HttpGet]
-        public ActionResult<IEnumerable<ProductResponse>> GetProducts()
+        public async Task<ActionResult<IEnumerable<ProductResponse>>> GetProducts()
         {
-            return databaseContext.Products.Include(p => p.Category)
-                .OrderByDescending(p => p.ProductId).Select(ProductResponse.FromProduct)
-                .ToList();
+            return (await productService.FindAll())
+                .Select(ProductResponse.FromProduct).ToList();
         }
         [HttpGet("{id}")]
-        public ActionResult<ProductResponse> GetProductById(int id)
+        public async Task<ActionResult<ProductResponse>> GetProductById(int id)
         {
-            var result = databaseContext.Products.Include(p => p.Category)
-                .SingleOrDefault(p => p.ProductId == id);
-            if (result == null)
+            var product = await productService.FindById(id);
+            if (product == null)
                 return NotFound();
-            return ProductResponse.FromProduct(result);
+            return product.Adapt<ProductResponse>();
         }
         [HttpGet("search")]
-        public ActionResult<IEnumerable<ProductResponse>> SearchProducts([FromQuery] string name = "")
+        public async Task<ActionResult<IEnumerable<ProductResponse>>> SearchProducts([FromQuery] string name = "")
         {
-            var result = databaseContext.Products.Include(p => p.Category)
-                .Where(p => p.Name.ToLower().Contains(name.ToLower()))
+            return (await productService.Search(name))
                 .Select(ProductResponse.FromProduct)
                 .ToList();
-            //if (result == null)
-            //    return NotFound();
-            return result;
         }
         [HttpPost]
-        public ActionResult<Product> AddProduct([FromForm] ProductRequest productRequest)
+        public async Task<ActionResult<Product>> AddProduct([FromForm] ProductRequest productRequest)
         {
             Product product = productRequest.Adapt<Product>();
-            
-            databaseContext.Products.Add(product);
-            databaseContext.SaveChanges();
+            await productService.Create(product);
             return StatusCode((int)HttpStatusCode.Created);
         }
         [HttpPut("{id}")]
-        public ActionResult<Product> UpdateProduct(int id, [FromForm] ProductRequest productRequest)
+        public async Task<ActionResult<Product>> UpdateProduct(int id, [FromForm] ProductRequest productRequest)
         {
             if (id != productRequest.ProductId)
             {
                 return BadRequest();
             }
-            Product result =  databaseContext.Products.Find(id);
+            Product product = await productService.FindById(id);
 
-            if (result == null)
+            if (product == null)
             {
                 return NotFound();
             }
-            productRequest.Adapt(result);
-
-            databaseContext.Products.Update(result);
-            databaseContext.SaveChanges();
-
+            productRequest.Adapt(product);
+            await productService.Update(product);
             return StatusCode((int)HttpStatusCode.NoContent);
         }
         [HttpDelete("{id}")]
-        public ActionResult DeleteProduct(int id)
+        public async Task<ActionResult> DeleteProduct(int id)
         {
-            Product result = databaseContext.Products.Find(id);
-            if (result == null)
+            Product product = await productService.FindById(id);
+            if (product == null)
             {
                 return NotFound();
             }
-            databaseContext.Remove(result);
-            databaseContext.SaveChanges();
-
+            await productService.Delete(product);
             return NoContent();
         }
     }
