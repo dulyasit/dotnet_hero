@@ -1,8 +1,11 @@
+using Autofac;
+using Autofac.Extensions.DependencyInjection;
 using dotnet_hero.Data;
 using dotnet_hero.Interfaces;
 using dotnet_hero.Services;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
+using System.Reflection;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -17,7 +20,12 @@ builder.Services.AddSwaggerGen();
 var connectionString = builder.Configuration.GetConnectionString("ConnectionSQLServer");
 builder.Services.AddDbContext<DatabaseContext>(x => x.UseSqlServer(connectionString));
 
-builder.Services.AddTransient<IProductService, ProductService>();
+//builder.Services.AddTransient<IProductService, ProductService>();
+// AutoFac
+builder.Host.UseServiceProviderFactory(new AutofacServiceProviderFactory());
+builder.Host.ConfigureContainer<ContainerBuilder>(
+    builder => builder.RegisterAssemblyTypes(Assembly.GetExecutingAssembly())
+    .Where(t => t.Name.EndsWith("Service")).AsImplementedInterfaces());
 
 var app = builder.Build();
 
