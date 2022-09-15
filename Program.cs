@@ -1,4 +1,6 @@
 using dotnet_hero.Data;
+using dotnet_hero.Interfaces;
+using dotnet_hero.Services;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 
@@ -14,6 +16,8 @@ builder.Services.AddSwaggerGen();
 
 var connectionString = builder.Configuration.GetConnectionString("ConnectionSQLServer");
 builder.Services.AddDbContext<DatabaseContext>(x => x.UseSqlServer(connectionString));
+
+builder.Services.AddTransient<IProductService, ProductService>();
 
 var app = builder.Build();
 
