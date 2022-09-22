@@ -47,7 +47,13 @@ namespace dotnet_hero.Controllers
         [HttpPost]
         public async Task<ActionResult<Product>> AddProduct([FromForm] ProductRequest productRequest)
         {
+            (string errorMessage, string imageName) = await productService.UploadImage(productRequest.FormFiles);
+            if (!string.IsNullOrEmpty(errorMessage))
+            {
+                return BadRequest(errorMessage);
+            }
             Product product = productRequest.Adapt<Product>();
+            product.Image = imageName;
             await productService.Create(product);
             return StatusCode((int)HttpStatusCode.Created);
         }
@@ -63,6 +69,15 @@ namespace dotnet_hero.Controllers
             if (product == null)
             {
                 return NotFound();
+            }
+            (string errorMessage, string imageName) = await productService.UploadImage(productRequest.FormFiles);
+            if (!string.IsNullOrEmpty(errorMessage))
+            {
+                return BadRequest(errorMessage);
+            }
+            if (!string.IsNullOrEmpty(imageName))
+            {
+                product.Image = imageName;
             }
             productRequest.Adapt(product);
             await productService.Update(product);

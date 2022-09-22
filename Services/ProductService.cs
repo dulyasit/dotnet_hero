@@ -10,10 +10,12 @@ namespace dotnet_hero.Services
     public class ProductService : IProductService
     {
         private readonly DatabaseContext databaseContext;
+        private readonly IUploadFileService uploadFileService;
 
-        public ProductService(DatabaseContext databaseContext)
+        public ProductService(DatabaseContext databaseContext, IUploadFileService uploadFileService)
         {
             this.databaseContext = databaseContext;
+            this.uploadFileService = uploadFileService;
         }
 
         public async Task Create(Product product)
@@ -52,6 +54,21 @@ namespace dotnet_hero.Services
         {
             databaseContext.Products.Update(product);
             await databaseContext.SaveChangesAsync();
+        }
+
+        public async Task<(string errorMessage, string imageName)> UploadImage(List<IFormFile> formFiles)
+        {
+            string errorMessage = "";
+            string imageName = "";
+            if (uploadFileService.IsUpload(formFiles))
+            {
+                errorMessage = uploadFileService.Validation(formFiles);
+                if (string.IsNullOrEmpty(errorMessage))
+                {
+                    imageName = (await uploadFileService.UploadImages(formFiles))[0];
+                }
+            }
+            return (errorMessage, imageName); 
         }
     }
 }
