@@ -1,0 +1,68 @@
+﻿using dotnet_hero.Data;
+using dotnet_hero.Entities;
+using dotnet_hero.Interfaces;
+using Microsoft.AspNetCore.Cryptography.KeyDerivation;
+using Microsoft.EntityFrameworkCore;
+using System.Security.Cryptography;
+
+namespace dotnet_hero.Services
+{
+    public class AccountService : IAccountService
+    {
+        private readonly DatabaseContext databaseContext;
+
+        public AccountService(DatabaseContext databaseContext)
+        {
+            this.databaseContext = databaseContext;
+        }
+
+        public async Task Register(Account account)
+        {
+            var existingAccount = await databaseContext.Accounts.SingleOrDefaultAsync(a => a.Username == account.Username);
+            if (existingAccount != null)
+                throw new Exception("Existing Account");
+
+            account.Password = CreatePasswordHash(account.Password);
+            databaseContext.Accounts.Add(account);
+            await databaseContext.SaveChangesAsync();
+        }
+        public Task Login(string username, string password)
+        {
+            throw new NotImplementedException();
+        }
+
+        private string CreatePasswordHash(string password)
+        {
+            byte[] salt = new byte[128 / 8];
+            using (var rng = RandomNumberGenerator.Create())
+            {
+                rng.GetBytes(salt);
+            }
+
+            string hashed = Convert.ToBase64String(KeyDerivation.Pbkdf2(
+                password: password,
+                salt: salt,
+                prf: KeyDerivationPrf.HMACSHA512,
+                iterationCount: 10000,
+                numBytesRequested: 258 / 8));
+            return $"{Convert.ToBase64String(salt)}.{hashed}";
+        }
+        private bool VerifyPassword(string hash, string password)
+        {
+            var parts = hash.Split('.', 2);
+            if (parts.Length != 2)
+                return false;
+            var salt = Convert.FromBase64String(parts[0]);
+            var passwordHashed = parts[1];
+
+            string hashed = Convert.ToBase64String(KeyDerivation.Pbkdf2(
+                password: password,
+                salt: salt,
+                prf: KeyDerivationPrf.HMACSHA512,
+                iterationCount: 10000,
+                numBytesRequested: 258 / 8));
+
+            return passwordHashed == hashed;
+        }
+    }
+}
