@@ -25,6 +25,13 @@ namespace dotnet_hero.Controllers
             await accountService.Register(accout);
             return StatusCode((int)HttpStatusCode.Created);
         }
-
+        [HttpPost("[action]")]
+        public async Task<ActionResult> Login(LoginRequest loginRequest)
+        {
+            var account = await accountService.Login(loginRequest.Username, loginRequest.Password);
+            if (account == null)
+               return Unauthorized();
+            return Ok(new { token = "a;dslfjaldkfj" });
+        }
     }
 }

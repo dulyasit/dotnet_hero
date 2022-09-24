@@ -3,6 +3,7 @@ using dotnet_hero.DTOs.Product;
 using dotnet_hero.Entities;
 using dotnet_hero.Interfaces;
 using Mapster;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Data.SqlClient;
@@ -17,6 +18,7 @@ namespace dotnet_hero.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
+    [Authorize(Roles = "Admin, Cashier")]
     public class ProductsController : ControllerBase
     {
         private readonly IProductService productService;

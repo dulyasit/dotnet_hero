@@ -26,9 +26,15 @@ namespace dotnet_hero.Services
             databaseContext.Accounts.Add(account);
             await databaseContext.SaveChangesAsync();
         }
-        public Task Login(string username, string password)
+        public async Task<Account> Login(string username, string password)
         {
-            throw new NotImplementedException();
+            var account = await databaseContext.Accounts.Include(a => a.Role)
+                .SingleOrDefaultAsync(a => a.Username == username);
+            if (account != null && VerifyPassword(account.Password, password))
+            {
+                return account;
+            }
+            return null;
         }
 
         private string CreatePasswordHash(string password)
