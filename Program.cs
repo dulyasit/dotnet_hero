@@ -1,6 +1,7 @@
 using Autofac;
 using Autofac.Extensions.DependencyInjection;
 using dotnet_hero.Data;
+using dotnet_hero.Installers;
 using dotnet_hero.Interfaces;
 using dotnet_hero.Services;
 using Microsoft.EntityFrameworkCore;
@@ -10,6 +11,7 @@ using System.Reflection;
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
+builder.Services.InstallServiceInAssembly(builder.Configuration);
 
 builder.Services.AddControllers();
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
@@ -26,6 +28,7 @@ builder.Host.UseServiceProviderFactory(new AutofacServiceProviderFactory());
 builder.Host.ConfigureContainer<ContainerBuilder>(
     builder => builder.RegisterAssemblyTypes(Assembly.GetExecutingAssembly())
     .Where(t => t.Name.EndsWith("Service")).AsImplementedInterfaces());
+
 
 var app = builder.Build();
 
